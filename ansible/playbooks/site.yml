@@ -1,0 +1,36 @@
+---
+- name: Configure DevOps lab nodes
+  hosts: all
+  become: true
+  handlers:
+    - name: Restart docker
+      ansible.builtin.service:
+        name: docker
+        state: restarted
+  tasks:
+    - name: Install baseline packages
+      ansible.builtin.apt:
+        name: [curl, ca-certificates, git, jq, vim, ufw, chrony, docker.io]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Enable services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: [chrony, docker]
+    - name: Allow SSH from lab subnet
+      community.general.ufw:
+        rule: allow
+        src: 192.168.56.0/24
+        port: "22"
+        proto: tcp
+    - name: Deny incoming traffic by default
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+

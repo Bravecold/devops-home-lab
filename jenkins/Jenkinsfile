@@ -1,0 +1,34 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY = 'control.lab:5000'
+    IMAGE = 'devops-lab-api'
+    IMAGE_TAG = "${env.GIT_COMMIT?.take(12) ?: env.BUILD_NUMBER}"
+  }
+  stages {
+    stage('Test') {
+      agent { docker { image 'python:3.12-slim'; reuseNode true } }
+      steps {
+        sh 'pip install --disable-pip-version-check -r app/requirements.txt'
+        sh 'cd app && pytest --junitxml=report.xml -q'
+      }
+      post { always { junit allowEmptyResults: true, testResults: 'app/report.xml' } }
+    }
+    stage('Build') {
+      steps { sh 'docker build --pull -t $REGISTRY/$IMAGE:$IMAGE_TAG app' }
+    }
+    stage('Publish') {
+      when { branch 'main' }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'registry-credentials', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+          sh 'printf %s "$REG_PASS" | docker login "$REGISTRY" -u "$REG_USER" --password-stdin'
+          sh 'docker push $REGISTRY/$IMAGE:$IMAGE_TAG'
+        }
+      }
+    }
+  }
+  post {
+    always { sh 'docker logout "$REGISTRY" || true' }
+  }
+}
+
