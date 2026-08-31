@@ -1,0 +1,11 @@
+[control]
+control.lab ansible_user=devops
+
+[workers]
+worker1.lab ansible_user=devops
+worker2.lab ansible_user=devops
+
+[all:vars]
+ansible_ssh_private_key_file=~/.ssh/devops_lab
+ansible_python_interpreter=/usr/bin/python3
+

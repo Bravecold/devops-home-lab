@@ -1,0 +1,12 @@
+.env
+.venv*/
+__pycache__/
+.pytest_cache/
+*.pyc
+ansible/inventory.ini
+ansible/group_vars/all/vault-password*
+*.pem
+*.key
+kubeconfig*
+report.xml
+

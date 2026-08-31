@@ -1,0 +1,54 @@
+name: devops-home-lab
+services:
+  api:
+    build: ./app
+    container_name: devops-api
+    environment:
+      APP_VERSION: compose
+      POSTGRES_HOST: db
+      POSTGRES_DB: lab
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab-only-change-me
+      REDIS_HOST: redis
+    ports: ["8088:5000"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks: [labnet]
+    restart: unless-stopped
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lab
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab-only-change-me
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U lab -d lab"], interval: 5s, timeout: 3s, retries: 10}
+    networks: [labnet]
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis_data:/data"]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10}
+    networks: [labnet]
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [monitoring]
+    command: ["--config.file=/etc/prometheus/prometheus.yml"]
+    volumes: ["./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    networks: [labnet]
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [monitoring]
+    environment: {GF_SECURITY_ADMIN_PASSWORD: change-me-now}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3000:3000"]
+    networks: [labnet]
+volumes: {postgres_data: {}, redis_data: {}, grafana_data: {}}
+networks: {labnet: {}}
+
